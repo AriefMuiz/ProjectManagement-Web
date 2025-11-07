@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         try {
             const response = await authApi.login(email, password);
-            const newAccessToken = response.accessToken;
+            const newAccessToken = response.data.accessToken;
 
             window.sessionStorage.setItem('accessToken', newAccessToken);
 
