@@ -1,28 +1,21 @@
 // src/components/PrivateRoute.jsx
-import React, { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const PrivateRoute = ({ children }) => {
-    const { isAuthenticated, refreshToken, loading } = useAuth();
-    const [checked, setChecked] = useState(false);
+    const { isAuthenticated, loading } = useAuth();
+    const location = useLocation();
 
-    useEffect(() => {
-        const verify = async () => {
-            try {
-                await refreshToken();
-            } catch (err) {
-                console.error("Auth refresh failed in PrivateRoute:", err);
-            } finally {
-                setChecked(true);
-            }
-        };
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center min-h-screen">
+                <div className="loading loading-spinner loading-lg"></div>
+            </div>
+        );
+    }
 
-        verify();
-    }, []);
-
-    if (loading || !checked) return <div>Loading...</div>;
-    return isAuthenticated ? children : <Navigate to="/login" />;
+    return isAuthenticated ? children : <Navigate to="/login" state={{ from: location }} replace />;
 };
 
 export default PrivateRoute;

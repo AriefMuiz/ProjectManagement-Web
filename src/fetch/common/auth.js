@@ -1,4 +1,6 @@
 // src/fetch/common/auth.js
+import axiosInstance, {handleApiResponse} from "../axiosConfig.js";
+
 /**
  * Authentication API client
  * - Handles login, logout, and token refresh
@@ -105,19 +107,10 @@ const authApi = {
      * @returns {Promise} - Response with new access token
      */
     async refreshToken() {
-        const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            credentials: "include", // Important: needed for cookies
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to refresh token");
-        }
-
-        return response.json(); // Returns { accessToken }
+        // Note: No Authorization header needed - refresh token is in HTTP-only cookie
+        return handleApiResponse(() =>
+            axiosInstance.post('/auth/refresh')
+        );
     },
 
     /**

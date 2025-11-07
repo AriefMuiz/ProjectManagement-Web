@@ -1,5 +1,5 @@
 // src/context/AuthContext.jsx
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import authApi from '../fetch/common/auth';
 
@@ -8,9 +8,48 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); // Start with loading true
 
-    // Decode user information from access token
+    // Check initial auth state on mount
+    useEffect(() => {
+        checkAuthState();
+    }, []);
+
+    const checkAuthState = async () => {
+        const token = window.sessionStorage.getItem('accessToken');
+
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const userData = decodeToken(token);
+            if (userData && !isTokenExpired(token)) {
+                setUser(userData);
+                setIsAuthenticated(true);
+            } else {
+                // Token is expired, try to refresh
+                await refreshToken();
+            }
+        } catch (error) {
+            console.error("Auth check failed:", error);
+            // Clear invalid token
+            window.sessionStorage.removeItem('accessToken');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const isTokenExpired = (token) => {
+        try {
+            const decoded = jwtDecode(token);
+            return decoded.exp * 1000 < Date.now();
+        } catch {
+            return true;
+        }
+    };
+
     const decodeToken = (token) => {
         try {
             const decoded = jwtDecode(token);
@@ -18,6 +57,7 @@ export const AuthProvider = ({ children }) => {
                 userId: decoded.sub,
                 email: decoded.email,
                 role: decoded.role,
+                exp: decoded.exp,
             };
         } catch (error) {
             console.error("Token decode error:", error);
@@ -25,7 +65,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Refresh token function
     const refreshToken = async () => {
         setLoading(true);
         try {
@@ -40,6 +79,7 @@ export const AuthProvider = ({ children }) => {
 
             return true;
         } catch (error) {
+            console.error("Token refresh failed:", error);
             window.sessionStorage.removeItem('accessToken');
             setUser(null);
             setIsAuthenticated(false);
@@ -49,12 +89,11 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Login function with proper error handling
     const login = async (email, password) => {
         setLoading(true);
         try {
             const response = await authApi.login(email, password);
-            const newAccessToken = response.data.accessToken;
+            const newAccessToken = response.accessToken;
 
             window.sessionStorage.setItem('accessToken', newAccessToken);
 
@@ -66,32 +105,12 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error("Login error:", error);
 
-            // Handle different types of errors
             let errorMessage = 'Login failed';
-
-            if (error.response) {
-                // Server responded with error status
-                const status = error.response.status;
-                const data = error.response.data;
-
-                if (status === 401) {
-                    errorMessage = data?.message || 'Invalid email or password';
-                } else if (status === 403) {
-                    errorMessage = data?.message || 'Account not authorized';
-                } else if (status === 404) {
-                    errorMessage = data?.message || 'User not found';
-                } else if (status === 422) {
-                    errorMessage = data?.message || 'Invalid input data';
-                } else if (status >= 500) {
-                    errorMessage = 'Server error. Please try again later.';
-                } else {
-                    errorMessage = data?.message || `Login failed (${status})`;
-                }
-            } else if (error.request) {
-                // Request was made but no response received
+            if (error.status === 401) {
+                errorMessage = 'Invalid email or password';
+            } else if (error.status === 0) {
                 errorMessage = 'Network error. Please check your connection.';
             } else if (error.message) {
-                // Something else happened
                 errorMessage = error.message;
             }
 
@@ -104,7 +123,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Logout function
     const logout = async () => {
         try {
             await authApi.logout();
@@ -114,13 +132,6 @@ export const AuthProvider = ({ children }) => {
             window.sessionStorage.removeItem('accessToken');
             setUser(null);
             setIsAuthenticated(false);
-            // Clear any existing timeouts
-            if (typeof window !== 'undefined') {
-                const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-                events.forEach(event => {
-                    document.removeEventListener(event, () => {});
-                });
-            }
         }
     };
 
@@ -145,4 +156,10 @@ export const AuthProvider = ({ children }) => {
     );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
