@@ -1,5 +1,5 @@
+import axiosInstance, { handleApiResponse } from "../axiosConfig.js";
 
-import { axiosInstance, handleApiResponse } from "../axiosConfig.js";
 
 /**
  * Projects API service for admin functions

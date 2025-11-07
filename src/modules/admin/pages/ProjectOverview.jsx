@@ -1,11 +1,6 @@
 import React, {useEffect, useState} from "react";
-import ProjectFilters from "../../../components/table/filter/ProjectFilters.jsx";
-import ProjectTable from "../../../components/widget/ProjectTable";
 import projectsAPI from "../../../fetch/admin/projects.js";
-
-// Mock dataset — replace with API later
-
-
+import ProjectTable from "../../../components/table/ProjectTable.jsx";
 
 const categories = ["UHSB", "UHE", "JELITA"];
 
@@ -14,14 +9,14 @@ function getCategoryStats(projects, funder) {
     const count = filtered.length;
     const totalWithoutSST = filtered.reduce((sum, p) => sum + p.cost.withoutSST, 0);
     const totalWithSST = filtered.reduce((sum, p) => sum + p.cost.withSST, 0);
-    return { count, totalWithSST, totalWithoutSST };
+    return {count, totalWithSST, totalWithoutSST};
 }
 
 function getTotalStats(projects) {
     const count = projects.length;
     const totalWithoutSST = projects.reduce((sum, p) => sum + p.cost.withoutSST, 0);
     const totalWithSST = projects.reduce((sum, p) => sum + p.cost.withSST, 0);
-    return { count, totalWithSST, totalWithoutSST };
+    return {count, totalWithSST, totalWithoutSST};
 }
 
 function getRangeStats(projects, min, max = Infinity) {
@@ -31,10 +26,10 @@ function getRangeStats(projects, min, max = Infinity) {
     const count = filtered.length;
     const totalWithoutSST = filtered.reduce((sum, p) => sum + p.cost.withoutSST, 0);
     const totalWithSST = filtered.reduce((sum, p) => sum + p.cost.withSST, 0);
-    return { count, totalWithSST, totalWithoutSST };
+    return {count, totalWithSST, totalWithoutSST};
 }
 
-function StatCard({ title, count, withSST, withoutSST, color }) {
+function StatCard({title, count, withSST, withoutSST, color}) {
     return (
         <div className={`rounded-xl shadow-lg p-6 bg-white border-t-4 ${color} flex-1 min-w-[220px]`}>
             <h2 className="text-lg font-bold mb-2 text-gray-700">{title}</h2>
@@ -42,15 +37,17 @@ function StatCard({ title, count, withSST, withoutSST, color }) {
             <div className="text-sm text-gray-500">Projects</div>
             <div className="mt-4">
                 <div className="text-xs text-gray-500">Total Revenue (w/ SST):</div>
-                <div className="text-lg font-semibold text-green-700">RM {withSST.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+                <div
+                    className="text-lg font-semibold text-green-700">RM {withSST.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
                 <div className="text-xs text-gray-500 mt-1">Total Revenue (w/o SST):</div>
-                <div className="text-lg font-semibold text-blue-700">RM {withoutSST.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+                <div
+                    className="text-lg font-semibold text-blue-700">RM {withoutSST.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
             </div>
         </div>
     );
 }
 
-function SubStatCard({ title, count, color }) {
+function SubStatCard({title, count, color}) {
     return (
         <div className={`rounded-lg shadow p-4 bg-white border-l-4 ${color} flex-1 min-w-[180px]`}>
             <h3 className="text-base font-semibold text-gray-700 mb-1">{title}</h3>
@@ -65,94 +62,73 @@ function ProjectOverview() {
     const [costSummary, setCostSummary] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filteredProjects, setFilteredProjects] = useState([]);
+    const [toastType, setToastType] = useState("success");
+
+    const setToast = (message, type) => {
+        setToastMessage(message);
+        setToastType(type);
+    };
+
 
     useEffect(() => {
         const fetchProjects = async () => {
             try {
                 setLoading(true);
                 const response = await projectsAPI.getAllProjects();
-                // The API returns projects in response.data
                 setProjects(response.data || []);
-                setLoading(false);
             } catch (error) {
                 console.error("Error fetching projects:", error);
                 setError("Failed to load projects. Please try again later.");
+            } finally {
                 setLoading(false);
+            }
+        };
+
+        const fetchCostSummary = async () => {
+            try {
+                const response = await projectsAPI.getCostSummary();
+                console.log("Cost summary response:", response);
+                setCostSummary(response || []);
+            } catch (error) {
+                console.error("Error fetching cost summary:", error);
             }
         };
 
         fetchProjects();
-    }, []);
-
-    useEffect(() => {
-        const fetchCostSummary = async () => {
-            try {
-                setLoading(true);
-                const response = await projectsAPI.getCostSummary();
-                console.log("response:", response);
-                // The API returns projects in response.data
-                setCostSummary(response || []);
-                setLoading(false);
-            } catch (error) {
-                console.error("Error fetching projects:", error);
-                setError("Failed to load projects. Please try again later.");
-                setLoading(false);
-            }
-        };
-
         fetchCostSummary();
     }, []);
 
-    useEffect(() => {
-        setFilteredProjects(projects);
-    }, [projects]);
-
-    const handleFilter = (filters) => {
-        console.log("Applied Filters:", filters);
-
-        let filtered = [...projects];
-
-        // Apply status filter
-        if (filters.status && filters.status !== "all") {
-            filtered = filtered.filter(
-                project => project.status.toLowerCase() === filters.status
-            );
-        }
-
-        // Apply faculty filter
-        if (filters.faculty && filters.faculty !== "All") {
-            filtered = filtered.filter(
-                project => project.faculty === filters.faculty
-            );
-        }
-
-        // Apply search filter
-        if (filters.search) {
-            const searchLower = filters.search.toLowerCase();
-            filtered = filtered.filter(
-                project =>
-                    project.title.toLowerCase().includes(searchLower) ||
-                    project.projectCode?.toLowerCase().includes(searchLower) ||
-                    project.leaderConsultantName?.toLowerCase().includes(searchLower)
-            );
-        }
-
-        setFilteredProjects(filtered);
-    };
-
     // Stats for each category
-const stats = categories.map((cat) => ({
-    ...getCategoryStats(costSummary, cat),
-    title: cat,
-}));
+    const stats = categories.map((cat) => ({
+        ...getCategoryStats(costSummary, cat),
+        title: cat,
+    }));
     const totalStats = getTotalStats(costSummary);
-console.log("costSummary:", costSummary);
+
     // Sub-card stats
     const range200to500 = getRangeStats(costSummary, 200000, 500000);
     const rangeAbove500 = getRangeStats(costSummary, 500000);
 
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="loading loading-spinner loading-lg text-primary"></div>
+                    <p className="mt-4 text-gray-600">Loading project data...</p>
+                </div>
+            </div>
+        );
+    }
 
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+                <div className="alert alert-error max-w-md">
+                    <span>{error}</span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 p-8">
@@ -206,34 +182,7 @@ console.log("costSummary:", costSummary);
                 />
             </div>
 
-            {/* Filters */}
-            <ProjectFilters onFilter={handleFilter}/>
-
-            {/* Loading, Error, and Table Display */}
-            {loading ? (
-                <div className="flex justify-center py-10">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
-                </div>
-            ) : error ? (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    <p>{error}</p>
-                </div>
-            ) : (
-                <ProjectTable
-                    projects={filteredProjects.map(project => ({
-                        id: project.id,
-                        code: project.projectCode,
-                        title: project.title,
-                        faculty: project.faculty,
-                        staff: project.leaderConsultantName,
-                        status: project.status.toLowerCase(),
-                        funder: project.projectUnder,
-                        startDate: project.startDate,
-                        endDate: project.endDate,
-                        amount: parseFloat(project.grandTotal || 0)
-                    }))}
-                />
-            )}
+            <ProjectTable setToast={setToast}/>
         </div>
     );
 }

@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import projectsAPI from "../fetch/common/projects.js";
+import projectsAPI from "../fetch/admin/projects.js";
 
 const useFetchProject = () => {
     const [projects, setProjects] = useState([]);

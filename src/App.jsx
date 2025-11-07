@@ -29,6 +29,7 @@ import MemoCreate from "./modules/admin/pages/Memo/MemoCreate.jsx";
 import MemoList from "./modules/admin/pages/Memo/MemoList.jsx";
 import ProjectMemoList from "./modules/admin/pages/Memo/ProjectMemoList.jsx";
 import ProjectMemoDetail from "./modules/admin/pages/Memo/ProjectMemoDetail.jsx";
+import PrivateRoute from "./components/PrivateRoute.jsx";
 // import SurveyLayout from "./modules/admin/pages/Survey/Survey.jsx";
 // import SurveyList from "./modules/admin/pages/Survey/List.jsx";
 // import SurveyDetail from "./modules/admin/pages/Survey/Detail.jsx";
@@ -54,20 +55,24 @@ function App() {
                     <Route path="*" element={<Home/>}/>
                 </Route>
                 {/* Admin routes */}
-                <Route element={<AdminLayout/>}>
+
+                <Route   element={
+                    <PrivateRoute>
+                        <AdminLayout />
+                    </PrivateRoute>
+                }>
+
                     <Route path="/admin/dashboard" element={<Dashboard/>}/>
                     <Route path="/admin/overview" element={<ProjectOverview/>}/>
+
                     <Route path="/admin/project" element={<ProjectManagement/>}>
                         <Route index element={<ProjectList />} />
                         <Route path="create" element={<ProjectCreate />} />
                         <Route path="detail/:id" element={<ProjectDetail />} />
                         <Route path="edit/:id" element={<ProjectEdit />} />
-
-                        {/*<Route path="detail/:surveyId" element={<SurveyDetail />} />*/}
-                        {/*<Route path="create" element={<SurveyCreate />} />*/}
                     </Route>
-                    <Route path="/admin/memo" element={<MemoManagement/>}>
 
+                    <Route path="/admin/memo" element={<MemoManagement/>}>
                         <Route index element={<MemoList />} />
                         <Route path="list/:projectId" element={<ProjectMemoList />} />
                         <Route path="detail/:projectId/:memoId" element={<ProjectMemoDetail />} />
@@ -75,6 +80,7 @@ function App() {
                         {/*<Route path="detail/:id" element={<MemoDetail />} />*/}
                         {/*<Route path="edit/:id" element={<MemoEdit />} />*/}
                     </Route>
+
                 </Route>
             </Routes>
         </Router>

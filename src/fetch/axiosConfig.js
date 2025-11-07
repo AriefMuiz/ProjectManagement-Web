@@ -3,12 +3,12 @@ import axios from 'axios';
 import authApi from './common/auth';
 
 // Create axios instance with default config
-export const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_WEB_API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: true, // Important for cookies
+const axiosInstance = axios.create({
+    baseURL: import.meta.env.VITE_WEB_API_URL,
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    withCredentials: true, // Important for cookies
 });
 
 const isPublicPath = (url) => {
@@ -16,7 +16,7 @@ const isPublicPath = (url) => {
         const fullUrl = new URL(url, import.meta.env.VITE_WEB_API_URL);
         return fullUrl.pathname.startsWith('/public/');
     } catch {
-        return false;
+        return url && url.startsWith('/public/');
     }
 };
 
@@ -25,82 +25,80 @@ let refreshTokenPromise = null;
 
 // Request interceptor - adds auth token to requests
 axiosInstance.interceptors.request.use(
-  (config) => {
+    (config) => {
+        if (isPublicPath(config.url)) {
+            return config;
+        }
 
+        // Get token from sessionStorage
+        const accessToken = window.sessionStorage.getItem('accessToken');
 
-      if (isPublicPath(config.url)) {
-          return config;
-      }
+        if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
+        }
 
-    // Get token from memory (you could also use a function from AuthContext)
-    const accessToken = window.sessionStorage.getItem('accessToken');
-
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error)
+        return config;
+    },
+    (error) => Promise.reject(error)
 );
 
 // Response interceptor - handles token refresh on 401 errors
 axiosInstance.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
 
-      if (isPublicPath(originalRequest.url)) {
-          return Promise.reject(error);  // Skip token refresh for public endpoints
-      }
-
-
-    // If error is 401 and we haven't tried refreshing yet
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      originalRequest.url !== '/auth/refresh' &&
-      originalRequest.url !== '/auth/login'
-    ) {
-      originalRequest._retry = true;
-
-      try {
-          console.log()
-        // Only create a new refresh token promise if one isn't already pending
-        if (!refreshTokenPromise) {
-          refreshTokenPromise = authApi.refreshToken()
-            .then(response => response)
-            .finally(() => {
-              refreshTokenPromise = null; // Clear the promise
-            });
+        // Skip token refresh for public endpoints or if no config
+        if (!originalRequest || isPublicPath(originalRequest.url)) {
+            return Promise.reject(error);
         }
 
-        // Wait for the refresh token response
-        const tokenResponse = await refreshTokenPromise;
+        // If error is 401 and we haven't tried refreshing yet
+        if (
+            error.response?.status === 401 &&
+            !originalRequest._retry &&
+            originalRequest.url !== '/auth/refresh' &&
+            originalRequest.url !== '/auth/login'
+        ) {
+            originalRequest._retry = true;
 
-        // Store new access token
-        const newAccessToken = tokenResponse.accessToken;
-        window.sessionStorage.setItem('accessToken', newAccessToken);
+            try {
+                // Only create a new refresh token promise if one isn't already pending
+                if (!refreshTokenPromise) {
+                    refreshTokenPromise = authApi.refreshToken()
+                        .finally(() => {
+                            refreshTokenPromise = null; // Clear the promise
+                        });
+                }
 
-        // Update authorization header and retry the original request
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        // If refresh token fails, log out the user
-        console.error('Token refresh failed:', refreshError);
+                // Wait for the refresh token response
+                const tokenResponse = await refreshTokenPromise;
 
-        // Clear tokens and redirect to login
-        window.sessionStorage.removeItem('accessToken');
-        window.location.href = '/login';
+                // Store new access token
+                const newAccessToken = tokenResponse.accessToken;
+                window.sessionStorage.setItem('accessToken', newAccessToken);
 
-        return Promise.reject(refreshError);
-      }
+                // Update authorization header and retry the original request
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                return axiosInstance(originalRequest);
+            } catch (refreshError) {
+                // If refresh token fails, log out the user
+                console.error('Token refresh failed:', refreshError);
+
+                // Clear tokens and redirect to login
+                window.sessionStorage.removeItem('accessToken');
+                window.location.href = '/login';
+
+                return Promise.reject(refreshError);
+            }
+        }
+
+        // For all other errors, just reject the promise
+        return Promise.reject(error);
     }
-
-    // For all other errors, just reject the promise
-    return Promise.reject(error);
-  }
 );
+
+export default axiosInstance;
 
 export const handleApiResponse = async (apiCall) => {
     try {

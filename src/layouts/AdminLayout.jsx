@@ -2,13 +2,14 @@
 import React from "react";
 import Navbar from "../components/common/navbar/Navbar";
 import { Outlet } from "react-router-dom";
+import {useAuth} from "../context/AuthContext.jsx";
 
 const AdminLayout = () => {
-  const role = "admin"; // Retrieve this dynamically based on authenticated user data
+    const { isAuthenticated } = useAuth();
 
   return (
     <div>
-      <Navbar role={role} />
+        <Navbar isAuthenticated={isAuthenticated} />
       <main className="min-h-screen bg-base-300 p-4">
         <Outlet />
       </main>

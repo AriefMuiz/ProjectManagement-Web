@@ -1,29 +1,49 @@
+// src/components/Login/Login.jsx
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { authApi } from "../../../fetch/common";
-import { jwtDecode } from "jwt-decode";
+import {useAuth} from "../../../context/AuthContext.jsx";
+
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [toastType, setToastType] = useState("success");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+
+    if (!email || !password) {
+      setToastType("error");
+      setToastMessage("Please enter both email and password");
+      return;
+    }
+
+    setIsLoading(true);
+    setToastMessage(null);
+
     try {
-      navigate("/admin/dashboard");
-      // const { token } = await authApi.login(email, password);
-      // const decoded = jwtDecode(token);
-      // // Save token if needed: localStorage.setItem("token", token);
-      // if (decoded.roles && decoded.roles.includes("admin")) {
-      //   navigate("/admin/dashboard");
-      // } else {
-      //   navigate("/user/dashboard");
-      // }
+      const result = await login(email, password);
+
+      if (result.success) {
+        setToastType("success");
+        setToastMessage("Login successful!");
+        setTimeout(() => {
+          navigate('/admin/dashboard');
+        }, 1000);
+      } else {
+        setToastType("error");
+        setToastMessage(result.message || 'Login failed');
+      }
     } catch (err) {
-      setError(err.message);
+      setToastType("error");
+      setToastMessage('An unexpected error occurred. Please try again.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -36,9 +56,6 @@ const Login = () => {
           <p className="mt-2 text-sm text-gray-500 text-center">
             Please enter your credentials to access the dashboard
           </p>
-          {error && (
-              <div className="text-red-600 text-center mb-2">{error}</div>
-          )}
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -51,6 +68,7 @@ const Login = () => {
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  disabled={isLoading}
               />
             </div>
             <div>
@@ -64,22 +82,40 @@ const Login = () => {
                   required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  disabled={isLoading}
               />
             </div>
             <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring focus:ring-blue-300"
+                className="w-full px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading}
             >
-              Sign In
+              {isLoading ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs mr-2"></span>
+                    Logging in...
+                  </>
+              ) : (
+                  'Continue'
+              )}
             </button>
           </form>
           <div className="mt-6 text-center text-sm text-gray-500">
-            <span>Don’t have access? </span>
+            <span>Don't have access? </span>
             <Link to="/register" className="text-blue-600 hover:underline">
               Request Access here
             </Link>
           </div>
         </div>
+
+        {/* Toast message */}
+        {toastMessage && (
+            <div className="toast toast-top toast-end">
+              <div className={`alert ${toastType === "success" ? "alert-success" : "alert-error"}`}>
+                <span>{toastMessage}</span>
+              </div>
+            </div>
+        )}
       </div>
   );
 };

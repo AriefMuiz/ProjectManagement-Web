@@ -1,5 +1,5 @@
 // src/fetch/admin/projects.js
-import { axiosInstance, handleApiResponse } from "../axiosConfig.js";
+import axiosInstance, { handleApiResponse } from "../axiosConfig.js";
 
 /**
  * Projects API service for admin functions
@@ -9,8 +9,23 @@ const projectsAPI = {
    * Get all projects
    * @returns {Promise<Object>} Projects list with metadata
    */
-  async getAllProjects() {
-    return handleApiResponse(() => axiosInstance.get("/admin/projects"));
+  async getAllProjects({
+                         page = 1,
+                         pageSize = 5,
+                         search = "",
+                         status = "all",
+                       } = {}) {
+    return handleApiResponse(() =>
+        axiosInstance.get(`/admin/project/list`, {
+          params: {
+            "page": page,
+            "page-size": pageSize,
+            "search": search,
+            "status": status !== "all" ? status : undefined
+          },
+          headers: { accept: "*/*" },
+        })
+    );
   },
 
   /**
@@ -18,7 +33,7 @@ const projectsAPI = {
    * @returns {Promise<Object>} Cost summary data
    */
   async getCostSummary() {
-    return handleApiResponse(() => axiosInstance.get("/admin/projects/cost-summary"));
+    return handleApiResponse(() => axiosInstance.get("/admin/project/payment-report"));
   },
 
   /**
@@ -27,7 +42,7 @@ const projectsAPI = {
    * @returns {Promise<Object>} Project details
    */
   async getProjectById(id) {
-    return handleApiResponse(() => axiosInstance.get(`/admin/projects/${id}`));
+    return handleApiResponse(() => axiosInstance.get(`/admin/project/${id}`));
   },
 
   /**
@@ -44,7 +59,7 @@ const projectsAPI = {
    * @returns {Promise<Array>} Array of memo summary objects
    */
   async getMemoSummary() {
-    return handleApiResponse(() => axiosInstance.get("/admin/projects/memo-summary"));
+    return handleApiResponse(() => axiosInstance.get("/admin/project/memo-summary"));
   },
 
   /**
@@ -53,7 +68,7 @@ const projectsAPI = {
    * @returns {Promise<Object>} Cost detail data
    */
   async getCostDetail(projectId) {
-    return handleApiResponse(() => axiosInstance.get(`/admin/projects/cost-detail?projectId=${projectId}`));
+    return handleApiResponse(() => axiosInstance.get(`/admin/project/cost-detail?projectId=${projectId}`));
   },
 
   /**
@@ -62,7 +77,7 @@ const projectsAPI = {
    * @returns {Promise<Object>} Consultants with bank details
    */
   async getConsultantsWithBank(projectId) {
-    return handleApiResponse(() => axiosInstance.get(`/admin/projects/consultants-with-bank?projectId=${projectId}`));
+    return handleApiResponse(() => axiosInstance.get(`/admin/project/consultants-with-bank?projectId=${projectId}`));
   },
 
   /**
@@ -72,7 +87,7 @@ const projectsAPI = {
    * @returns {Promise<Object>} Updated project
    */
   async updateProject(id, projectData) {
-    return handleApiResponse(() => axiosInstance.put(`/admin/projects/${id}`, projectData));
+    return handleApiResponse(() => axiosInstance.put(`/admin/project/${id}`, projectData));
   },
 
   /**
@@ -81,7 +96,7 @@ const projectsAPI = {
    * @returns {Promise<Object>} Response data
    */
   async deleteProject(id) {
-    return handleApiResponse(() => axiosInstance.delete(`/admin/projects/${id}`));
+    return handleApiResponse(() => axiosInstance.delete(`/admin/project/${id}`));
   },
 
   /**
@@ -91,7 +106,7 @@ const projectsAPI = {
    * @returns {Promise<Object>} Response data
    */
   async updateProjectStatus(id, status) {
-    return handleApiResponse(() => axiosInstance.patch(`/admin/projects/${id}/status`, { status }));
+    return handleApiResponse(() => axiosInstance.patch(`/admin/project/${id}/status`, { status }));
   }
 };
 

@@ -1,6 +1,5 @@
 // src/fetch/admin/memo.js
-import {axiosInstance, handleApiResponse} from "../axiosConfig.js";
-
+import axiosInstance, { handleApiResponse } from "../axiosConfig.js";
 const memoAPI = {
     /**
      * Create a new memo

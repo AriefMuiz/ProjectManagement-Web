@@ -1,4 +1,4 @@
-import {axiosInstance, handleApiResponse} from "../axiosConfig.js";
+import axiosInstance, { handleApiResponse } from "../axiosConfig.js";
 
 const consultantAPI = {
 /**

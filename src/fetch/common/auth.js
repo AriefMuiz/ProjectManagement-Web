@@ -1,10 +1,11 @@
 // src/fetch/common/auth.js
-
 /**
  * Authentication API client
  * - Handles login, logout, and token refresh
  * - Works with in-memory access tokens and HTTP-only cookie refresh tokens
  */
+const API_BASE_URL = import.meta.env.VITE_WEB_API_URL;
+
 const authApi = {
     /**
      * Login with email and password
@@ -13,7 +14,7 @@ const authApi = {
      * @returns {Promise} - Response with access token
      */
     async login(email, password) {
-        const response = await fetch("http://localhost:8080/api/v1/auth/login", {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
             method: "POST",
             headers: {
                 "accept": "*/*",
@@ -32,11 +33,79 @@ const authApi = {
     },
 
     /**
+     * Request password reset
+     * @param {string} email - User email
+     * @returns {Promise} - Response message
+     */
+    async forgotPassword(email) {
+        const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+            method: "POST",
+            headers: {
+                "accept": "*/*",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || "Failed to send reset email. Please try again.");
+        }
+
+        return response.json();
+    },
+
+    /**
+     * Reset password with token
+     * @param {string} token - Reset token from email
+     * @param {string} newPassword - New password
+     * @returns {Promise} - Response message
+     */
+    async resetPassword(token, newPassword) {
+        const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+            method: "POST",
+            headers: {
+                "accept": "*/*",
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token, newPassword }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || "Failed to reset password. Please try again.");
+        }
+
+        return response.json();
+    },
+
+    /**
+     * Validate reset token
+     * @param {string} token - Reset token to validate
+     * @returns {Promise} - Response indicating if token is valid
+     */
+    async validateResetToken(token) {
+        const response = await fetch(`${API_BASE_URL}/auth/validate-reset-token?token=${encodeURIComponent(token)}`, {
+            method: "GET",
+            headers: {
+                "accept": "*/*",
+            },
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || "Invalid or expired reset token.");
+        }
+
+        return response.json();
+    },
+
+    /**
      * Refresh the access token using the HTTP-only refresh token cookie
      * @returns {Promise} - Response with new access token
      */
     async refreshToken() {
-        const response = await fetch("http://localhost:8080/api/v1/auth/refresh", {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -56,7 +125,7 @@ const authApi = {
      * @returns {Promise} - Response from logout endpoint
      */
     async logout() {
-        const response = await fetch("http://localhost:8080/api/v1/auth/logout", {
+        const response = await fetch(`${API_BASE_URL}/auth/logout`, {
             method: "POST",
             credentials: "include", // Important: needed for cookies
         });
@@ -66,30 +135,6 @@ const authApi = {
         }
 
         return response;
-    },
-
-    /**
-     * Make an authenticated API request
-     * @param {string} url - API endpoint
-     * @param {object} options - Fetch options
-     * @param {string} accessToken - Current access token
-     * @returns {Promise} - API response
-     */
-    async authenticatedRequest(url, options = {}, accessToken) {
-        const headers = {
-            ...options.headers,
-            "Content-Type": "application/json",
-        };
-
-        if (accessToken) {
-            headers["Authorization"] = `Bearer ${accessToken}`;
-        }
-
-        return fetch(url, {
-            ...options,
-            headers,
-            credentials: "include", // Include cookies for refresh token
-        });
     }
 };
 

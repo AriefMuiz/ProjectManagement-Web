@@ -7,7 +7,7 @@ import ProjectReview from "../../../../components/widget/ProjectReview.jsx";
 import Toast from "../../../../components/ui/Toast.jsx";
 import {projectsAPI} from "../../../../fetch/common";
 import {useNavigate} from "react-router-dom";
-import InitialPaymentReceived from "../../../../components/widget/InitialPaymentReceived.jsx";
+import InitialPaymentReceived from "./ProjectCreate/InitialPaymentReceived/Index.jsx";
 
 
 const ProjectCreate = () => {
@@ -31,7 +31,6 @@ const ProjectCreate = () => {
 
     // Form state
     const [formData, setFormData] = useState({
-
         // Project Details fields
         projectCode: "",
         quotationNo: "",
@@ -47,16 +46,19 @@ const ProjectCreate = () => {
         clients: [],
 
         // Cost Breakdown fields
-
-        directCost: [], // renamed from sectionB: [{ item: "", paymentAmount: 0 }]
-        finderReward: [], // renamed from sectionC: [{ finderName: "", percentCharged: 0, paymentAmount: 0 }]
-        managementFee: [], // renamed from sectionD: [{ managedBy: "", percentCharged: 0, paymentAmount: 0 }]
+        directCost: [],
+        finderReward: [],
+        managementFee: [],
+        consultantPayments: {}, // Add this missing field
         totalCost: 0,
-        sstPercentage: 0, // renamed from sstAmount
-        sstEnabled: false, // For SST checkbox
+        sstPercentage: 0,
+        sstEnabled: false,
 
         // Project members/team fields
         projectConsultant: [],
+
+        // Payment allocation fields (for InitialPaymentReceived)
+        totalPaymentReceived: 0,
     });
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -103,7 +105,52 @@ const ProjectCreate = () => {
                     managedBy: item.managedBy || "",
                     percentCharged: parseFloat(item.percent) || 0,
                     paymentAmount: parseFloat(item.paymentAmount) || 0
-                }))
+                })),
+                initialPayment: {
+                    totalReceived: formData.totalPaymentReceived || 0,
+                    allocations: {
+                        consultants: formData.projectConsultant?.map(c => ({
+                            consultantId: c.consultantId,
+                            allocatedAmount: c.allocatedAmount || 0,
+                            bankDetails: c.bank
+                        })),
+                        directCost: formData.directCost?.map(item => ({
+                            item: item.item,
+                            allocatedAmount: item.allocatedAmount || 0,
+                            bankDetails: {
+                                bankName: item.bankName,
+                                accountHolderName: item.accountHolderName,
+                                accountNumber: item.accountNumber
+                            }
+                        })),
+                        finderReward: formData.finderReward?.map(item => ({
+                            item: item.item,
+                            allocatedAmount: item.allocatedAmount || 0,
+                            bankDetails: {
+                                bankName: item.bankName,
+                                accountHolderName: item.accountHolderName,
+                                accountNumber: item.accountNumber
+                            }
+                        })),
+                        managementFee: formData.managementFee?.map(item => ({
+                            item: item.item,
+                            allocatedAmount: item.allocatedAmount || 0,
+                            bankDetails: {
+                                bankName: item.bankName,
+                                accountHolderName: item.accountHolderName,
+                                accountNumber: item.accountNumber
+                            }
+                        })),
+                        sstAllocation: {
+                            allocatedAmount: 0,
+                            bankName: "",
+                            accountHolderName: "",
+                            accountNumber: ""
+                        }
+                    }
+                }
+
+
             };
 
             console.log("Sending API request:", projectData);
@@ -144,7 +191,7 @@ const ProjectCreate = () => {
         }
     }, [formData.startDate, formData.endDate]);
 
-    const nextStep = () => setStep((prev) => Math.min(prev + 1, 4));
+    const nextStep = () => setStep((prev) => Math.min(prev + 1, 5));
     const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
 
